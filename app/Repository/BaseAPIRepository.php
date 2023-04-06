@@ -70,4 +70,30 @@ class BaseAPIRepository
     {
         return $this->table()->where($this->pk, $id)->delete();
     }
+
+    public function customTable($tableName)
+    {
+        return DB::table($tableName);
+    }
+
+    public function deleteCustom($id)
+    {
+        $postdata = $this->detail($id);
+        $postdata->user_id = auth()->user()->id;
+        $postdata->deleted_at = now()->format('Y-m-d h:i:s');
+
+        // unset data
+        unset($postdata->id);
+        unset($postdata->uuid);
+
+        $data = json_encode($postdata);
+        $data = (new ApprovalRepository)->create([
+            'table' => $this->tableName,
+            'fk_id' => $id,
+            'data' => $data,
+            'status' => 'MENUNGGU PERSETUJUAN'
+        ]);
+
+        return $data;
+    }
 }

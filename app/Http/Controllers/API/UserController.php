@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Http\Controllers\Controller;
+use App\Repository\UserRepository;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 
@@ -18,6 +19,7 @@ class UserController extends Controller
         foreach($users as $user)
         {
             $roles = $user->getRoleNames();
+            $new_role = [];
             foreach($roles as $role)
             {
                 $new_role[] = $role;
@@ -31,6 +33,43 @@ class UserController extends Controller
             'status' => 1,
             'message' => 'Success',
             'data' => $users
+        ]);
+    }
+
+    public function create()
+    {
+        $postdata = request()->all();
+        $validator = Validator::make($postdata, [
+            'name' => 'required',
+            'username' => ['required', Rule::unique('musers', 'username')->whereNull('deleted_at')],
+            'email' => ['required', Rule::unique('musers', 'email')->whereNull('deleted_at')],
+            'password' => 'required|confirmed|min:8',
+            'role' => 'required'
+        ]);
+
+
+        if($validator->fails())
+        {
+            return response()->json([
+                'status' => 0,
+                'message' => $validator->errors()
+            ], 400);
+        }
+
+        $roles = $postdata['role'];
+
+        $user = User::create(array_merge(
+            $validator->validated(),
+            [
+                'password' => Hash::make(request('password'))
+            ]
+        ));
+
+        $user->assignRole($roles);
+
+        return response()->json([
+            'status' => 1,
+            'message' => 'Successfully Created.',
         ]);
     }
 
@@ -99,7 +138,16 @@ class UserController extends Controller
                     'password' => Hash::make($postdata['password'])
                 ]
             ));
-        } else {
+        } else if(isset($postdata['role']))
+        {
+            User::where('id', $id)->update(array_merge(
+                $validator->validated(),
+                []
+            ));
+            $user = User::findOrFail($id);
+            $user->syncRoles($postdata['role']);
+        }
+        else {
             User::where('id', $id)->update(array_merge(
                 $validator->validated(),
                 []
@@ -171,6 +219,27 @@ class UserController extends Controller
         return response()->json([
             'status' => 1,
             'message' => 'Success',
+        ]);
+    }
+
+    public function roleList()
+    {
+
+        $data = (new UserRepository)->roleList();
+
+
+        if(!$data)
+        {
+            return response()->json([
+                'status' => 0,
+                'message' => 'Data not found!'
+            ], 404);
+        }
+
+        return response()->json([
+            'status' => 1,
+            'message' => 'Success',
+            'data' => $data
         ]);
     }
 }

@@ -6,7 +6,7 @@ use App\Helper\Helper;
 use Illuminate\Validation\Rule;
 use App\Repository\DeviceRepository;
 use App\Repository\DocumentRepository;
-
+use App\Repository\TableRepository;
 
 class DocumentController extends BaseAPIController
 {
@@ -39,7 +39,9 @@ class DocumentController extends BaseAPIController
     public function customQuery(&$data, &$id = null)
     {
         $data->leftJoin('mdevices', $this->repo->tableName.'.device_id', '=', 'mdevices.id');
-        $data->select($this->repo->tableName.'.*', 'mdevices.name as device_name', 'mdevices.room as room_name', 'mdevices.table as table_name', 'mdevices.photo as photo');
+        $data->leftJoin('mrooms', 'mdevices.room_id', '=', 'mrooms.id');
+        $data->leftJoin('mtables', 'mdevices.table_id', '=', 'mtables.id');
+        $data->select($this->repo->tableName.'.*', 'mdevices.photo as photo', 'mrooms.name as room', 'mtables.name as table');
 
         if($id)
         {
@@ -54,9 +56,32 @@ class DocumentController extends BaseAPIController
         {
             $data->tag = json_decode($data->tag) ?? [];
             $device = (new DeviceRepository)->detail($data->device_id);
+            if(!$device)
+            {
+                return response()->json([
+                    'status' => 0,
+                    'message' => 'Harap isi data Alat terlebih dahulu.'
+                ]);
+            }
+            $room = (new DeviceRepository)->detail($device->room_id);
+            if(!$room)
+            {
+                return response()->json([
+                    'status' => 0,
+                    'message' => 'Harap isi data Alat terlebih dahulu.'
+                ]);
+            }
+            $table = (new TableRepository)->detail($device->table_id);
+            if(!$table)
+            {
+                return response()->json([
+                    'status' => 0,
+                    'message' => 'Harap isi data Alat terlebih dahulu.'
+                ]);
+            }
             $data->device_name = $device->name;
-            $data->room_name = $device->room;
-            $data->table_name = $device->table;
+            $data->room_name = $room->name;
+            $data->table_name = $table->name;
             $data->photo = Helper::getUrl($device->photo);
 
         } else {
@@ -73,10 +98,14 @@ class DocumentController extends BaseAPIController
 
     public function customPostdata(&$postdata)
     {
-        $postdata['id'] = request('id');
+        // $postdata['id'] = request('id');
         if(isset($postdata['tag']))
         {
             $postdata['tag'] = json_encode($postdata['tag']);
+        }
+        if(isset($postdata['id']))
+        {
+            $postdata['code'] = $postdata['code'] ?? $this->repo->detail($postdata['id'])->code;
         }
     }
 
@@ -84,7 +113,7 @@ class DocumentController extends BaseAPIController
     {
         $params['pageSize'] = request('pageSize');
         $params['query'] = request('query');
-        $params['column'] = ['mdevices.name', 'mdocuments.name', 'mdocuments.tag'];
+        $params['column'] = ['mdevices.name', 'mdocuments.name', 'mdocuments.tag', 'mdocuments.code'];
     }
 
     public function beforeAdd(&$postdata)

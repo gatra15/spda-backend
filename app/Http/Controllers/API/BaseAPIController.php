@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API;
 
 use App\Helper\Helper;
+use App\Repository\ApprovalRepository;
 use Illuminate\Http\Request;
 use App\Repository\LogRepository;
 use Illuminate\Routing\Controller;
@@ -37,7 +38,11 @@ class BaseAPIController extends Controller
 
         $data = $data->paginate($paginate ?? 10);
         $this->customData($data);
-        return $data;
+        return response()->json([
+            'status' => 1,
+            'message' => 'Berhasil',
+            'data' => $data
+        ]);
     }
 
     public function customParams(&$params = null){}
@@ -248,4 +253,25 @@ class BaseAPIController extends Controller
     }
 
     public function rules(){}
+
+    public function deleteCustom($id)
+    {
+        $oldData = $this->repo->detail($id);
+        $data = $this->repo->deleteCustom($id);
+
+        if($data)
+        {
+            (new LogRepository)->insert(auth()->user(), request(), $this->repo->tableName, 'Delete', $id, $oldData);
+        } else {
+            return response()->json([
+                'status' => 0,
+                'message' => 'Something went wrong.'
+            ]);
+        }
+
+        return response()->json([
+            'status' => 1,
+            'message' => 'Successfully Deleted.',
+        ]);
+    }
 }

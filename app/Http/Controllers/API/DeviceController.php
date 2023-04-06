@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\API;
 
 use App\Helper\Helper;
+use Illuminate\Validation\Rule;
+use App\Repository\TagRepository;
 use App\Repository\DeviceRepository;
 use App\Repository\DeviceTagRepository;
 use App\Http\Controllers\API\BaseAPIController;
-use App\Repository\TagRepository;
+use App\Repository\RoomRepository;
+use App\Repository\TableRepository;
 
 class DeviceController extends BaseAPIController
 {
@@ -17,12 +20,26 @@ class DeviceController extends BaseAPIController
 
     public function rules()
     {
-        $rules = [
-            'name' => 'required',
-            'table' => 'required',
-            'room' => 'required',
-            'photo' => 'required'
-        ];
+        $id = request('id');
+        if($id)
+        {
+            $rules = [
+                'name' => 'required',
+                'table_id' => 'required',
+                'room_id' => 'required',
+                'photo' => 'required',
+                'code' => ['required', Rule::unique('mdevices', 'code')->ignore($id)->whereNull('deleted_at')],
+            ];
+        } else {
+            $rules = [
+                'name' => 'required',
+                'table_id' => 'required',
+                'room_id' => 'required',
+                'photo' => 'required',
+                'code' => ['required', Rule::unique('mdevices', 'code')->whereNull('deleted_at')],
+            ];
+        }
+
 
         return $rules;
     }
@@ -40,6 +57,7 @@ class DeviceController extends BaseAPIController
             {
                 $postdata['photo'] = $exist->photo;
             }
+            $postdata['code'] = $postdata['code'] ?? $this->repo->detail($postdata['id'])->code;
         }
     }
 
@@ -49,6 +67,22 @@ class DeviceController extends BaseAPIController
         {
             $data->tag = json_decode($data->tag) ?? [];
             $data->photo = Helper::getUrl($data->photo);
+            $data->room_name = (new RoomRepository)->detail($data->room_id)->name;
+            if(!$data->room_name)
+            {
+                return response()->json([
+                    'status' => 0,
+                    'message' => 'Harap isi data Ruangan terlebih dahulu.'
+                ]);
+            }
+            $data->table_name = (new TableRepository)->detail($data->table_id)->name;
+            if(!$data->room_name)
+            {
+                return response()->json([
+                    'status' => 0,
+                    'message' => 'Harap isi data Meja terlebih dahulu.'
+                ]);
+            }
         } else {
             foreach($data as $value)
             {
@@ -59,11 +93,18 @@ class DeviceController extends BaseAPIController
         return $data;
     }
 
+    public function customQuery(&$data)
+    {
+        $data->leftJoin('mrooms', $this->repo->tableName.'.room_id', '=', 'mrooms.id');
+        $data->leftJoin('mtables', $this->repo->tableName.'.table_id', '=', 'mtables.id');
+        $data->select($this->repo->tableName.'.*', 'mrooms.name as room_name', 'mtables.name as table_name');
+    }
+
     public function customParams(&$params = null)
     {
         $params['pageSize'] = request('pageSize');
         $params['query'] = request('query');
-        $params['column'] = ['name', 'tag'];
+        $params['column'] = ['name', 'tag', 'code'];
     }
 
     public function beforeAdd(&$postdata)

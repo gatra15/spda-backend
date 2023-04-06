@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateRole extends Migration
+class AddNewRole extends Migration
 {
     /**
      * Run the migrations.
@@ -15,9 +15,11 @@ class CreateRole extends Migration
      */
     public function up()
     {
-        Role::create(['name' => 'Super Admin']);
-        Role::create(['name' => 'User']);
-        Role::create(['name' => 'Operator']);
+        Role::create(['name' => 'Supervisor']);
+        Role::create(['name' => 'Admin']);
+        Role::create(['name' => 'Manager']);
+        $user = User::findOrFail(1);
+        $user->assignRole('Admin');
     }
 
     /**
@@ -27,6 +29,6 @@ class CreateRole extends Migration
      */
     public function down()
     {
-
+        //
     }
 }
