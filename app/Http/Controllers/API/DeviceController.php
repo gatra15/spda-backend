@@ -10,6 +10,7 @@ use App\Repository\DeviceTagRepository;
 use App\Http\Controllers\API\BaseAPIController;
 use App\Repository\RoomRepository;
 use App\Repository\TableRepository;
+use Carbon\Carbon;
 
 class DeviceController extends BaseAPIController
 {
@@ -48,7 +49,12 @@ class DeviceController extends BaseAPIController
     {
         if(isset($postdata['tag']))
         {
-            $postdata['tag'] = json_encode($postdata['tag']);
+            if($postdata['tag'][0] != null)
+            {
+                $postdata['tag'] = json_encode($postdata['tag']);
+            } else {
+                $postdata['tag'] = NULL;
+            }
         }
         if(isset($postdata['id']))
         {
@@ -66,6 +72,7 @@ class DeviceController extends BaseAPIController
         if($id)
         {
             $data->tag = json_decode($data->tag) ?? [];
+            $data->status = $data->status == 1 ? true : false;
             $data->photo = Helper::getUrl($data->photo);
             $data->room_name = (new RoomRepository)->detail($data->room_id)->name;
             if(!$data->room_name)
@@ -88,6 +95,7 @@ class DeviceController extends BaseAPIController
             {
                 $value->tag = json_decode($value->tag) ?? [];
                 $value->photo = Helper::getUrl($value->photo);
+                $value->status = $value->status == 1 ? true : false;
             }
         }
         return $data;
@@ -126,6 +134,38 @@ class DeviceController extends BaseAPIController
             'status' => 1,
             'message' => 'Success',
             'data' => $data
+        ]);
+    }
+
+    public function checkStatus($id)
+    {
+        $data = $this->repo->detail($id);
+        $time = Carbon::parse($data->checked_at);
+        $now = now();
+
+        $diff = now()->diffInSeconds($time);
+
+        if($diff > 60)
+        {
+            $new_data['status'] = 0;
+            $this->repo->update($new_data, $id);
+        } else {
+            $new_data['status'] = 1;
+            $this->repo->update($new_data, $id);
+        }
+        // $this->checkStatus($id);
+    }
+
+    public function startCheckStatus()
+    {
+        $postdata = request()->all();
+        $new_data['checked_at'] = now();
+        $new_data['status'] = 1;
+        $this->repo->update($new_data, $postdata['id']);
+
+        return response()->json([
+            'status' => 1,
+            'message' => 'Success',
         ]);
     }
 }

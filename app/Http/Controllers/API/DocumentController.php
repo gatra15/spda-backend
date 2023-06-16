@@ -101,7 +101,12 @@ class DocumentController extends BaseAPIController
         // $postdata['id'] = request('id');
         if(isset($postdata['tag']))
         {
-            $postdata['tag'] = json_encode($postdata['tag']);
+            if($postdata['tag'][0] != null)
+            {
+                $postdata['tag'] = json_encode($postdata['tag']);
+            } else {
+                $postdata['tag'] = NULL;
+            }
         }
         if(isset($postdata['id']))
         {
@@ -136,6 +141,7 @@ class DocumentController extends BaseAPIController
         $postdata['updated_by'] = auth()->user()->name;
         // $this->tag = json_encode($postdata['tag_id']);
         // unset($postdata['tag_id']);
+        // dd(($postdata));
     }
 
     // public function afterEdit(&$id, &$postdata)

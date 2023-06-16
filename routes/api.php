@@ -28,6 +28,7 @@ Route::prefix('users')->group(function(){
 });
 
 Route::post('/documents/update-document', [DocumentController::class, 'updateDocument']);
+Route::post('/devices/start-check-status', [DeviceController::class, 'startCheckStatus']);
 
 Route::prefix('auth')->group(function()
 {
