@@ -16,6 +16,7 @@ class RoomController extends BaseAPIController
     public function rules()
     {
         $id = request('id');
+
         if($id)
         {
             $rules = [
